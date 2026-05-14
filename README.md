@@ -162,6 +162,12 @@ Gmail IMAP ──→ Agent (LLM + tools) ──→ HTML Email ──→ Gmail SM
                      │
                      ├── expand_email tool (on-demand full text)
                      └── structured JSON output
+
+X/Twitter ───→ Twitter Agent (LLM) ──→ HTML Email ──→ Gmail SMTP
+  │  (multi-channel fallback)              │
+  ├── twscrape                             ├── trend analysis
+  ├── Nitter RSS                           ├── top 10 curated picks
+  └── Official API                         └── image-rich format
 ```
 
 ### Plugin System
@@ -180,6 +186,48 @@ class MySink:
 
 ---
 
+## 🐦 X/Twitter Tech Hotspot
+
+Paperboy can also track trending tech posts on X/Twitter and send you a dedicated tech briefing.
+
+### Features
+- **Multi-channel fallback**: twscrape → Nitter RSS → Official API
+- **Configurable topics** (max 10): AI Agent, quantitative trading, etc.
+- **Agent-curated**: LLM selects top 10 most significant posts
+- **Rich output**: images, engagement stats, trend analysis, original links
+
+### Usage
+
+```bash
+# Run Twitter pipeline only
+python -m src.main --twitter
+
+# Run both email + twitter pipelines
+python -m src.main --all
+
+# Debug mode
+python -m src.main --twitter --debug
+```
+
+### Configuration
+
+Add to your `.env`:
+
+```env
+TWITTER_ENABLED=true
+TWITTER_TOPICS=AI Agent,quantitative trading,embodied intelligence
+TWITTER_LOOKBACK_HOURS=24
+TWITTER_TOP_PER_TOPIC=20
+TWITTER_FINAL_TOP=10
+
+# At least one scraper channel (priority: twscrape > nitter > api):
+TWSCRAPE_ACCOUNTS=user:pass:email:emailpass
+NITTER_INSTANCES=https://nitter.privacydev.net
+TWITTER_BEARER_TOKEN=your-bearer-token
+```
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -187,10 +235,17 @@ class MySink:
 │   ├── main.py              # Entry point + CLI
 │   ├── config.py            # Configuration (pydantic-settings)
 │   ├── models.py            # Data models
-│   ├── agent.py             # Minimal agent loop (LLM + tools)
-│   ├── summarizer.py        # Prompts + rendering
+│   ├── agent.py             # Email agent loop (LLM + tools)
+│   ├── twitter_agent.py     # Twitter agent loop (LLM + tools)
+│   ├── summarizer.py        # Email prompts + rendering
+│   ├── twitter_summarizer.py # Twitter prompts + rendering
 │   ├── llm/                 # LLM abstraction (multi-provider)
-│   ├── sources/             # Source plugins (Gmail, ...)
+│   ├── sources/             # Source plugins
+│   │   ├── gmail.py         # Gmail IMAP source
+│   │   └── twitter/         # X/Twitter source (multi-channel)
+│   │       ├── source.py    # Main orchestrator with fallback
+│   │       ├── models.py    # Tweet data models
+│   │       └── scrapers/    # twscrape, nitter, official API
 │   ├── sinks/               # Sink plugins (Email, ...)
 │   └── templates/           # HTML & text email templates
 ├── examples/
@@ -219,8 +274,9 @@ class MySink:
 ## 🗺️ Roadmap
 
 - [x] v1.0 — Gmail → LLM → Email briefing
-- [ ] v1.1 — RSS source plugin
-- [ ] v1.2 — Telegram / Feishu sink
+- [x] v1.1 — X/Twitter tech hotspot source (multi-channel: twscrape / Nitter / API)
+- [ ] v1.2 — RSS source plugin
+- [ ] v1.3 — Telegram / Feishu sink
 - [ ] v2.0 — `paperboy podcast` — briefing as audio (TTS)
 - [ ] v2.1 — `paperboy chat` — ask questions about today's briefing
 - [ ] v3.0 — Web config panel + multi-user

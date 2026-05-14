@@ -14,11 +14,20 @@ on:
         options:
           - "false"
           - "true"
+      pipeline:
+        description: "Which pipeline to run"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "email"
+          - "twitter"
 
 jobs:
   briefing:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -33,7 +42,8 @@ jobs:
       - name: Install dependencies
         run: pip install -e .
 
-      - name: Run Paperboy
+      - name: Run Email Briefing
+        if: ${{ github.event.inputs.pipeline == 'email' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '' }}
         env:
           DEBUG: ${{ github.event.inputs.debug || 'false' }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
@@ -45,3 +55,22 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python -m src.main
+
+      - name: Run Twitter Tech Briefing
+        if: ${{ github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '' }}
+        env:
+          DEBUG: ${{ github.event.inputs.debug || 'false' }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'qwen' }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_MODEL: ${{ secrets.QWEN_MODEL || 'qwen-plus' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TWITTER_ENABLED: ${{ secrets.TWITTER_ENABLED || 'true' }}
+          TWITTER_TOPICS: ${{ secrets.TWITTER_TOPICS || '' }}
+          TWITTER_LOOKBACK_HOURS: ${{ secrets.TWITTER_LOOKBACK_HOURS || '24' }}
+          TWSCRAPE_ACCOUNTS: ${{ secrets.TWSCRAPE_ACCOUNTS || '' }}
+          NITTER_INSTANCES: ${{ secrets.NITTER_INSTANCES || '' }}
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN || '' }}
+        run: python -m src.main --twitter

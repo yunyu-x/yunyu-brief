@@ -104,6 +104,159 @@ def run_demo() -> None:
     print("   Open it in your browser to see the email preview!")
 
 
+def run_twitter_pipeline(settings: Settings) -> None:
+    """Run the Twitter/X pipeline: fetch tweets → agent → summarize → send."""
+    from src.llm.openai_compatible import OpenAICompatibleClient
+    from src.sinks.email import EmailSink
+    from src.sources.twitter import TwitterSource
+    from src.twitter_agent import run_twitter_agent
+    from src.twitter_summarizer import (
+        render_twitter_briefing_html,
+        render_twitter_briefing_text,
+    )
+
+    debug = settings.debug
+    tracer = PipelineTracer() if debug else None
+
+    # ─── Step 1: Fetch Tweets ──────────────────────────────────────
+    topics = settings.get_twitter_topics()
+    if tracer:
+        tracer.start_step(
+            "1. FETCH TWEETS",
+            f"Topics={topics or 'defaults'}, "
+            f"Lookback={settings.twitter_lookback_hours}h, "
+            f"TopPerTopic={settings.twitter_top_per_topic}",
+        )
+
+    logger.info("Step 1/4: Fetching trending tweets from X...")
+    source = TwitterSource(
+        topics=topics or None,
+        lookback_hours=settings.twitter_lookback_hours,
+        top_per_topic=settings.twitter_top_per_topic,
+        final_top=settings.twitter_final_top,
+        twscrape_accounts=settings.get_twscrape_accounts(),
+        nitter_instances=settings.get_nitter_instances(),
+        bearer_token=settings.twitter_bearer_token,
+        debug=debug,
+    )
+
+    try:
+        tweets = source.fetch()
+    except Exception as e:
+        if tracer:
+            tracer.end_step("FAIL", f"Exception: {e}")
+            tracer.print_report()
+        raise
+
+    if not tweets:
+        msg = (
+            f"No tweets found for topics {topics or 'defaults'} "
+            f"in the last {settings.twitter_lookback_hours} hours."
+        )
+        logger.info(msg)
+        if tracer:
+            tracer.end_step("OK", msg)
+            tracer.print_report()
+        return
+
+    if tracer:
+        tracer.end_step("OK", f"Fetched {len(tweets)} tweets")
+
+    # ─── Step 2: Run Twitter Agent (LLM) ───────────────────────────
+    llm_config = settings.get_llm_config()
+    if tracer:
+        tracer.start_step(
+            "2. TWITTER AGENT",
+            f"Provider={settings.llm_provider.value}, "
+            f"Model={llm_config['model']}, "
+            f"Tweets={len(tweets)}, "
+            f"FinalTop={settings.twitter_final_top}",
+        )
+
+    logger.info(f"Step 2/4: Running Twitter agent on {len(tweets)} tweets...")
+    llm = OpenAICompatibleClient(
+        api_key=llm_config["api_key"],
+        base_url=llm_config["base_url"],
+        model=llm_config["model"],
+        debug=debug,
+    )
+
+    actual_topics = source.get_topics()
+
+    try:
+        briefing = run_twitter_agent(
+            llm=llm,
+            tweets=tweets,
+            topics=actual_topics,
+            max_turns=settings.max_agent_turns,
+            max_preview_chars=settings.max_email_preview_chars,
+            debug=debug,
+        )
+    except Exception as e:
+        if tracer:
+            tracer.end_step("FAIL", f"Exception: {e}")
+            tracer.print_report()
+        raise
+
+    if tracer:
+        tracer.end_step(
+            "OK",
+            f"Briefing: top10={len(briefing.top10)}, "
+            f"keywords={len(briefing.keywords)}",
+        )
+
+    # ─── Step 3: Render ────────────────────────────────────────────
+    if tracer:
+        tracer.start_step("3. RENDER TWITTER BRIEFING")
+
+    logger.info("Step 3/4: Rendering Twitter briefing...")
+    html_content = render_twitter_briefing_html(briefing)
+    text_content = render_twitter_briefing_text(briefing)
+
+    if tracer:
+        tracer.end_step(
+            "OK",
+            f"HTML={len(html_content)} chars, Text={len(text_content)} chars",
+        )
+        if debug:
+            logger.debug(f"[TRACE] Text preview:\n{text_content[:500]}")
+
+    # ─── Step 4: Send Email ────────────────────────────────────────
+    subject = f"🔥 X 技术热点 · {briefing.date}"
+    if tracer:
+        tracer.start_step(
+            "4. SEND EMAIL",
+            f"To={settings.gmail_address}, Subject={subject}",
+        )
+
+    logger.info("Step 4/4: Sending Twitter briefing email...")
+    sink = EmailSink(
+        address=settings.gmail_address,
+        app_password=settings.gmail_app_password,
+        debug=debug,
+    )
+
+    try:
+        sink.send_raw(
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+    except Exception as e:
+        if tracer:
+            tracer.end_step("FAIL", f"Exception: {e}")
+            tracer.print_report()
+        raise
+
+    if tracer:
+        tracer.end_step("OK", "Email sent successfully")
+
+    logger.info("✅ X Tech briefing sent successfully!")
+
+    if tracer:
+        tracer.print_report()
+
+
 def run_pipeline(settings: Settings) -> None:
     """Run the full pipeline: fetch → agent → summarize → send."""
     from src.agent import run_agent
@@ -265,6 +418,16 @@ def cli() -> None:
         action="store_true",
         help="Enable debug mode (full pipeline tracing)",
     )
+    parser.add_argument(
+        "--twitter",
+        action="store_true",
+        help="Run X/Twitter tech hotspot pipeline (instead of email briefing)",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run all enabled pipelines (email + twitter)",
+    )
     args = parser.parse_args()
 
     # Determine debug mode from CLI flag or env var
@@ -303,19 +466,60 @@ def cli() -> None:
         logger.info(f"[DEBUG]   LLM_BASE_URL: {llm_cfg['base_url']}")
         logger.info(f"[DEBUG]   MAX_AGENT_TURNS: {settings.max_agent_turns}")
         logger.info(f"[DEBUG]   MAX_PREVIEW_CHARS: {settings.max_email_preview_chars}")
+        if settings.twitter_enabled or args.twitter:
+            logger.info(f"[DEBUG]   TWITTER_ENABLED: {settings.twitter_enabled}")
+            logger.info(f"[DEBUG]   TWITTER_TOPICS: {settings.get_twitter_topics() or 'defaults'}")
+            logger.info(f"[DEBUG]   TWITTER_LOOKBACK: {settings.twitter_lookback_hours}h")
 
-    # Validate required settings
-    if not settings.gmail_address or not settings.gmail_app_password:
-        logger.error("GMAIL_ADDRESS and GMAIL_APP_PASSWORD are required.")
-        logger.error("See .env.example for configuration template.")
-        sys.exit(1)
+    # Determine which pipelines to run
+    run_email = True
+    run_x = args.twitter or (args.all and settings.twitter_enabled)
 
-    llm_config = settings.get_llm_config()
-    if not llm_config["api_key"]:
-        logger.error(f"API key for provider '{settings.llm_provider.value}' is not set.")
-        sys.exit(1)
+    if args.twitter and not args.all:
+        # --twitter alone means ONLY run twitter pipeline
+        run_email = False
+        run_x = True
 
-    run_pipeline(settings)
+    # Run email pipeline
+    if run_email and not args.twitter:
+        # Validate email settings
+        if not settings.gmail_address or not settings.gmail_app_password:
+            logger.error("GMAIL_ADDRESS and GMAIL_APP_PASSWORD are required.")
+            logger.error("See .env.example for configuration template.")
+            sys.exit(1)
+
+        llm_config = settings.get_llm_config()
+        if not llm_config["api_key"]:
+            logger.error(f"API key for provider '{settings.llm_provider.value}' is not set.")
+            sys.exit(1)
+
+        run_pipeline(settings)
+
+    # Run Twitter pipeline
+    if run_x:
+        # Validate minimal config for twitter
+        if not settings.gmail_address or not settings.gmail_app_password:
+            logger.error("GMAIL_ADDRESS and GMAIL_APP_PASSWORD are required to send the briefing.")
+            sys.exit(1)
+
+        llm_config = settings.get_llm_config()
+        if not llm_config["api_key"]:
+            logger.error(f"API key for provider '{settings.llm_provider.value}' is not set.")
+            sys.exit(1)
+
+        # Check if at least one twitter scraper is configured
+        has_scraper = (
+            settings.twscrape_accounts
+            or settings.nitter_instances
+            or settings.twitter_bearer_token
+        )
+        if not has_scraper:
+            logger.warning(
+                "No Twitter scraper credentials configured. "
+                "Will try Nitter public instances as fallback."
+            )
+
+        run_twitter_pipeline(settings)
 
 
 if __name__ == "__main__":
