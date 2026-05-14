@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     # Gmail
     gmail_address: str = ""
     gmail_app_password: str = ""
-    gmail_label: str = "Newsletters"
+    gmail_label: str = ""  # Empty = INBOX (all emails); set to a label name to filter
     lookback_hours: int = 24
 
     # LLM
