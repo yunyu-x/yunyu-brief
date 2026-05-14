@@ -46,6 +46,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Debug mode — enables full pipeline tracing
+    debug: bool = False
+
     # Gmail
     gmail_address: str = ""
     gmail_app_password: str = ""

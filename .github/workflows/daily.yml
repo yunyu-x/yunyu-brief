@@ -5,7 +5,15 @@ on:
     # UTC 0:00 = Beijing 8:00 AM
     - cron: "0 0 * * *"
   workflow_dispatch:
-    # Allow manual trigger for testing
+    inputs:
+      debug:
+        description: "Enable debug mode (full pipeline tracing)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   briefing:
@@ -27,6 +35,7 @@ jobs:
 
       - name: Run Paperboy
         env:
+          DEBUG: ${{ github.event.inputs.debug || 'false' }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_LABEL: ${{ secrets.GMAIL_LABEL || 'Newsletters' }}
