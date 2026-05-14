@@ -105,13 +105,19 @@ def run_demo() -> None:
 
 
 def run_twitter_pipeline(settings: Settings) -> None:
-    """Run the Twitter/X pipeline: fetch tweets → agent → summarize → send."""
+    """Run the Twitter/X pipeline: fetch → agent → render H5 → send digest email.
+
+    Output strategy:
+    1. Generate a full interactive H5 page (saved to output dir)
+    2. Send a lightweight email digest with top 3 + link to full H5 page
+    """
     from src.llm.openai_compatible import OpenAICompatibleClient
     from src.sinks.email import EmailSink
     from src.sources.twitter import TwitterSource
     from src.twitter_agent import run_twitter_agent
     from src.twitter_summarizer import (
-        render_twitter_briefing_html,
+        render_twitter_h5_page,
+        render_twitter_email_digest,
         render_twitter_briefing_text,
     )
 
@@ -128,7 +134,7 @@ def run_twitter_pipeline(settings: Settings) -> None:
             f"TopPerTopic={settings.twitter_top_per_topic}",
         )
 
-    logger.info("Step 1/4: Fetching trending tweets from X...")
+    logger.info("Step 1/5: Fetching trending tweets from X...")
     source = TwitterSource(
         topics=topics or None,
         lookback_hours=settings.twitter_lookback_hours,
@@ -173,7 +179,7 @@ def run_twitter_pipeline(settings: Settings) -> None:
             f"FinalTop={settings.twitter_final_top}",
         )
 
-    logger.info(f"Step 2/4: Running Twitter agent on {len(tweets)} tweets...")
+    logger.info(f"Step 2/5: Running Twitter agent on {len(tweets)} tweets...")
     llm = OpenAICompatibleClient(
         api_key=llm_config["api_key"],
         base_url=llm_config["base_url"],
@@ -205,31 +211,62 @@ def run_twitter_pipeline(settings: Settings) -> None:
             f"keywords={len(briefing.keywords)}",
         )
 
-    # ─── Step 3: Render ────────────────────────────────────────────
+    # ─── Step 3: Render & Save H5 Page ────────────────────────────
     if tracer:
-        tracer.start_step("3. RENDER TWITTER BRIEFING")
+        tracer.start_step("3. RENDER H5 PAGE")
 
-    logger.info("Step 3/4: Rendering Twitter briefing...")
-    html_content = render_twitter_briefing_html(briefing)
-    text_content = render_twitter_briefing_text(briefing)
+    logger.info("Step 3/5: Rendering full H5 page...")
+
+    # Generate H5 page
+    h5_content = render_twitter_h5_page(briefing)
+
+    # Save to output directory
+    output_dir = Path(settings.twitter_h5_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    h5_filename = f"x-tech-briefing-{briefing.date}.html"
+    h5_path = output_dir / h5_filename
+    h5_path.write_text(h5_content, encoding="utf-8")
+
+    # Determine the URL for the H5 page
+    if settings.twitter_h5_base_url:
+        h5_url = f"{settings.twitter_h5_base_url.rstrip('/')}/{h5_filename}"
+    else:
+        h5_url = f"file://{h5_path.absolute()}"
+
+    logger.info(f"H5 page saved: {h5_path.absolute()}")
+    logger.info(f"H5 URL: {h5_url}")
 
     if tracer:
         tracer.end_step(
             "OK",
-            f"HTML={len(html_content)} chars, Text={len(text_content)} chars",
+            f"H5={len(h5_content)} chars, saved to {h5_path}",
+        )
+
+    # ─── Step 4: Render Email Digest ──────────────────────────────
+    if tracer:
+        tracer.start_step("4. RENDER EMAIL DIGEST")
+
+    logger.info("Step 4/5: Rendering email digest...")
+    email_html = render_twitter_email_digest(briefing, h5_url=h5_url)
+    email_text = render_twitter_briefing_text(briefing, h5_url=h5_url)
+
+    if tracer:
+        tracer.end_step(
+            "OK",
+            f"EmailHTML={len(email_html)} chars, Text={len(email_text)} chars",
         )
         if debug:
-            logger.debug(f"[TRACE] Text preview:\n{text_content[:500]}")
+            logger.debug(f"[TRACE] Text preview:\n{email_text[:500]}")
 
-    # ─── Step 4: Send Email ────────────────────────────────────────
+    # ─── Step 5: Send Email ────────────────────────────────────────
     subject = f"🔥 X 技术热点 · {briefing.date}"
     if tracer:
         tracer.start_step(
-            "4. SEND EMAIL",
+            "5. SEND EMAIL",
             f"To={settings.gmail_address}, Subject={subject}",
         )
 
-    logger.info("Step 4/4: Sending Twitter briefing email...")
+    logger.info("Step 5/5: Sending Twitter digest email...")
     sink = EmailSink(
         address=settings.gmail_address,
         app_password=settings.gmail_app_password,
@@ -239,8 +276,8 @@ def run_twitter_pipeline(settings: Settings) -> None:
     try:
         sink.send_raw(
             subject=subject,
-            html_content=html_content,
-            text_content=text_content,
+            html_content=email_html,
+            text_content=email_text,
         )
     except Exception as e:
         if tracer:
@@ -252,6 +289,7 @@ def run_twitter_pipeline(settings: Settings) -> None:
         tracer.end_step("OK", "Email sent successfully")
 
     logger.info("✅ X Tech briefing sent successfully!")
+    logger.info(f"📄 Full briefing: {h5_url}")
 
     if tracer:
         tracer.print_report()

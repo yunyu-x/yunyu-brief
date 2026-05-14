@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     # Official X API
     twitter_bearer_token: str = ""
 
+    # H5 output — where to save the full briefing page
+    # Can be a local path or a URL prefix for deployed pages
+    twitter_h5_output_dir: str = "./output"
+    # Base URL for accessing the H5 page (e.g., GitHub Pages URL)
+    # Leave empty to use file:// path in email
+    twitter_h5_base_url: str = ""
+
     def get_twitter_topics(self) -> list[str]:
         """Parse comma-separated topics into list, max 10."""
         if not self.twitter_topics.strip():
