@@ -25,13 +25,14 @@ class GmailSource:
         self,
         address: str,
         app_password: str,
-        label: str = "Newsletters",
+        label: str = "",
         lookback_hours: int = 24,
         debug: bool = False,
     ):
         self.address = address
         self.app_password = app_password
-        self.label = label
+        # Empty string or not set → use INBOX (all emails)
+        self.label = label if label else "INBOX"
         self.lookback_hours = lookback_hours
         self.debug = debug
 

@@ -38,7 +38,7 @@ jobs:
           DEBUG: ${{ github.event.inputs.debug || 'false' }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          GMAIL_LABEL: ${{ secrets.GMAIL_LABEL || 'Newsletters' }}
+          GMAIL_LABEL: ${{ secrets.GMAIL_LABEL || '' }}
           LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'qwen' }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
           QWEN_MODEL: ${{ secrets.QWEN_MODEL || 'qwen-plus' }}
