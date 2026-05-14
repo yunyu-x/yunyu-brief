@@ -1,0 +1,57 @@
+{
+  "date": "2026-05-14",
+  "total_count": 8,
+  "top3": [
+    {
+      "title": "GPT-5 发布：多模态推理能力大幅提升",
+      "source": "AI Weekly",
+      "summary": "OpenAI 正式发布 GPT-5，在数学推理、代码生成和多模态理解方面取得突破性进展，同时推理成本降低 60%。",
+      "link": "https://example.com/gpt5-release"
+    },
+    {
+      "title": "Rust 在后端开发的采用率突破 30%",
+      "source": "The Pragmatic Engineer",
+      "summary": "Stack Overflow 最新调查显示 Rust 在后端场景的使用率首次超过 30%，主要受益于 async runtime 生态的成熟。",
+      "link": "https://example.com/rust-backend"
+    },
+    {
+      "title": "一个人如何用 AI Agent 管理 10 个开源项目",
+      "source": "Indie Hacker Weekly",
+      "summary": "独立开发者 Sarah 分享了她使用 AI Agent 自动化 issue 分类、PR review 和 changelog 生成的完整工作流。",
+      "link": "https://example.com/ai-agent-oss"
+    }
+  ],
+  "others": [
+    {
+      "title": "TypeScript 6.0 路线图公布",
+      "source": "JavaScript Weekly",
+      "summary": "新增 pattern matching 和改进的类型推断，预计 Q3 发布。",
+      "link": "https://example.com/ts6"
+    },
+    {
+      "title": "DuckDB 1.2 支持向量搜索",
+      "source": "Data Engineering Weekly",
+      "summary": "内置 HNSW 索引，无需外部向量数据库即可进行相似度检索。",
+      "link": ""
+    },
+    {
+      "title": "远程团队的异步沟通最佳实践",
+      "source": "Remote Work Digest",
+      "summary": "GitLab 工程总监分享了他们减少会议 40% 同时提升产出的方法论。",
+      "link": "https://example.com/async-comm"
+    },
+    {
+      "title": "Cloudflare Workers 现已支持 Python",
+      "source": "Serverless Status",
+      "summary": "基于 Pyodide 运行时，支持大部分纯 Python 库，冷启动时间 < 5ms。",
+      "link": "https://example.com/cf-python"
+    },
+    {
+      "title": "设计系统的 ROI：来自 Spotify 的数据",
+      "source": "UX Collective",
+      "summary": "Spotify 设计团队公布数据：统一设计系统后，新功能开发速度提升 35%。",
+      "link": ""
+    }
+  ],
+  "keywords": ["AI Agent", "GPT-5", "Rust", "TypeScript", "向量搜索", "远程办公", "设计系统"]
+}

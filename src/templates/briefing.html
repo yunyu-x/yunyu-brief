@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 32px 16px;">
+                <table style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; text-align: center;">
+                            <div style="font-size: 36px; margin-bottom: 8px;">&#128236;</div>
+                            <div style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+                                每日简报
+                            </div>
+                            <div style="font-size: 14px; color: rgba(255,255,255,0.85); margin-top: 4px;">
+                                {{DATE}} · 共 {{TOTAL_COUNT}} 封订阅邮件
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Top 3 -->
+                    <tr>
+                        <td style="padding: 24px 32px 8px;">
+                            <div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">
+                                &#11088; Top 3 必读
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                {{TOP3_ITEMS}}
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Others -->
+                    <tr>
+                        <td style="padding: 24px 32px 8px;">
+                            <div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">
+                                &#128240; 其他速览
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                {{OTHER_ITEMS}}
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Keywords -->
+                    <tr>
+                        <td style="padding: 24px 32px 32px;">
+                            <div style="font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">
+                                &#128278; 关键词雷达
+                            </div>
+                            <div style="line-height: 2;">
+                                {{KEYWORDS}}
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background: #f8f9fa; padding: 16px 32px; text-align: center;">
+                            <div style="font-size: 12px; color: #999;">
+                                Powered by <strong>Paperboy</strong> &#128236; · Your AI newsletter curator
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

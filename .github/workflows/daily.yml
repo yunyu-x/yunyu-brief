@@ -1,0 +1,38 @@
+name: Daily Briefing
+
+on:
+  schedule:
+    # UTC 0:00 = Beijing 8:00 AM
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    # Allow manual trigger for testing
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e .
+
+      - name: Run Paperboy
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_LABEL: ${{ secrets.GMAIL_LABEL || 'Newsletters' }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'qwen' }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_MODEL: ${{ secrets.QWEN_MODEL || 'qwen-plus' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: python -m src.main
