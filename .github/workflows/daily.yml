@@ -14,11 +14,31 @@ on:
         options:
           - "false"
           - "true"
+      pipeline:
+        description: "Which pipeline to run"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "email"
+          - "twitter"
+
+# Grant GITHUB_TOKEN permissions to deploy to Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only allow one deployment at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   briefing:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -33,7 +53,8 @@ jobs:
       - name: Install dependencies
         run: pip install -e .
 
-      - name: Run Paperboy
+      - name: Run Email Briefing
+        if: ${{ github.event.inputs.pipeline == 'email' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '' }}
         env:
           DEBUG: ${{ github.event.inputs.debug || 'false' }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
@@ -45,3 +66,164 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python -m src.main
+
+      - name: Run Twitter Tech Briefing
+        if: ${{ github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '' }}
+        env:
+          DEBUG: ${{ github.event.inputs.debug || 'false' }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'qwen' }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_MODEL: ${{ secrets.QWEN_MODEL || 'qwen-plus' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TWITTER_ENABLED: ${{ secrets.TWITTER_ENABLED || 'true' }}
+          TWITTER_TOPICS: ${{ secrets.TWITTER_TOPICS || '' }}
+          TWITTER_LOOKBACK_HOURS: ${{ secrets.TWITTER_LOOKBACK_HOURS || '24' }}
+          TWSCRAPE_ACCOUNTS: ${{ secrets.TWSCRAPE_ACCOUNTS || '' }}
+          NITTER_INSTANCES: ${{ secrets.NITTER_INSTANCES || '' }}
+          TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN || '' }}
+          TWITTER_H5_OUTPUT_DIR: ./output
+          TWITTER_H5_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: python -m src.main --twitter
+
+      # ─── Deploy H5 Pages to GitHub Pages ───────────────────────────
+      - name: Generate index page for GitHub Pages
+        if: ${{ github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '' }}
+        run: |
+          if [ -d "./output" ] && [ "$(ls -A ./output/*.html 2>/dev/null)" ]; then
+            # Create an index.html that lists all briefings and redirects to latest
+            LATEST=$(ls -t ./output/x-tech-briefing-*.html 2>/dev/null | head -1)
+            LATEST_NAME=$(basename "$LATEST")
+            
+            cat > ./output/index.html << 'INDEXEOF'
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Paperboy - X Tech Briefings</title>
+              <style>
+                  :root { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6; --border: #334155; }
+                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 40px 20px; }
+                  .container { max-width: 600px; margin: 0 auto; }
+                  h1 { font-size: 1.8rem; text-align: center; margin-bottom: 8px; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                  .subtitle { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; }
+                  .briefing-list { list-style: none; }
+                  .briefing-list li { margin-bottom: 12px; }
+                  .briefing-list a { display: block; padding: 16px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; color: var(--text); text-decoration: none; transition: all 0.2s; }
+                  .briefing-list a:hover { border-color: var(--accent); transform: translateX(4px); box-shadow: 0 4px 20px rgba(59,130,246,0.1); }
+                  .briefing-list .date { font-weight: 600; }
+                  .briefing-list .meta { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+                  .latest-badge { display: inline-block; background: rgba(16,185,129,0.15); color: #34d399; padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; margin-left: 8px; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>X Tech Briefings</h1>
+                  <p class="subtitle">Powered by Paperboy - AI-curated daily tech hotspots</p>
+                  <ul class="briefing-list" id="list"></ul>
+              </div>
+              <script>
+                  // This will be replaced by the shell script below
+                  const briefings = BRIEFING_LIST_PLACEHOLDER;
+                  const list = document.getElementById('list');
+                  briefings.forEach((b, i) => {
+                      const li = document.createElement('li');
+                      const badge = i === 0 ? '<span class="latest-badge">Latest</span>' : '';
+                      li.innerHTML = `<a href="${b.file}"><span class="date">${b.date}</span>${badge}<div class="meta">X Tech Hotspot Briefing</div></a>`;
+                      list.appendChild(li);
+                  });
+              </script>
+          </body>
+          </html>
+          INDEXEOF
+
+            # Build the briefing list JSON from files
+            BRIEFING_JSON="["
+            FIRST=true
+            for f in $(ls -t ./output/x-tech-briefing-*.html 2>/dev/null); do
+              FNAME=$(basename "$f")
+              DATE=$(echo "$FNAME" | sed 's/x-tech-briefing-//;s/.html//')
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                BRIEFING_JSON="$BRIEFING_JSON,"
+              fi
+              BRIEFING_JSON="$BRIEFING_JSON{\"file\":\"$FNAME\",\"date\":\"$DATE\"}"
+            done
+            BRIEFING_JSON="$BRIEFING_JSON]"
+
+            # Replace placeholder in index.html
+            sed -i "s|BRIEFING_LIST_PLACEHOLDER|$BRIEFING_JSON|" ./output/index.html
+
+            echo "Generated index.html with $(echo $BRIEFING_JSON | grep -o '{' | wc -l) briefings"
+            echo "Latest briefing: $LATEST_NAME"
+          else
+            echo "No H5 output files found, skipping index generation"
+          fi
+
+      - name: Download previous Pages artifact
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages-history
+          path: ./pages-history
+        continue-on-error: true
+
+      - name: Merge with previous briefings
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        run: |
+          # Copy previous briefing HTML files (not index.html) into output
+          if [ -d "./pages-history" ]; then
+            for f in ./pages-history/x-tech-briefing-*.html; do
+              [ -f "$f" ] && cp -n "$f" ./output/ 2>/dev/null || true
+            done
+            echo "Merged $(ls ./output/x-tech-briefing-*.html 2>/dev/null | wc -l) total briefings"
+          fi
+
+          # Regenerate index with all briefings
+          if [ -d "./output" ] && [ "$(ls -A ./output/x-tech-briefing-*.html 2>/dev/null)" ]; then
+            BRIEFING_JSON="["
+            FIRST=true
+            for f in $(ls -t ./output/x-tech-briefing-*.html 2>/dev/null); do
+              FNAME=$(basename "$f")
+              DATE=$(echo "$FNAME" | sed 's/x-tech-briefing-//;s/.html//')
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                BRIEFING_JSON="$BRIEFING_JSON,"
+              fi
+              BRIEFING_JSON="$BRIEFING_JSON{\"file\":\"$FNAME\",\"date\":\"$DATE\"}"
+            done
+            BRIEFING_JSON="$BRIEFING_JSON]"
+            sed -i "s|BRIEFING_LIST_PLACEHOLDER|\[\]|" ./output/index.html 2>/dev/null || true
+            # Rebuild index properly
+            sed -i "s|\[\]|$BRIEFING_JSON|" ./output/index.html
+          fi
+
+      - name: Save Pages history artifact
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-pages-history
+          path: ./output/x-tech-briefing-*.html
+          retention-days: 90
+          overwrite: true
+
+      - name: Setup Pages
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./output
+
+      - name: Deploy to GitHub Pages
+        if: ${{ (github.event.inputs.pipeline == 'twitter' || github.event.inputs.pipeline == 'all' || github.event.inputs.pipeline == '') && hashFiles('./output/*.html') != '' }}
+        id: deployment
+        uses: actions/deploy-pages@v4

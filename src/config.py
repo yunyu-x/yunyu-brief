@@ -78,6 +78,59 @@ class Settings(BaseSettings):
     max_agent_turns: int = 3
     max_email_preview_chars: int = 500
 
+    # === Twitter/X Source ===
+    twitter_enabled: bool = False
+    # Comma-separated tech topics (max 10). Empty = broad tech defaults.
+    twitter_topics: str = ""
+    twitter_lookback_hours: int = 24
+    twitter_top_per_topic: int = 20
+    twitter_final_top: int = 10
+
+    # twscrape accounts: "user1:pass1:email1:emailpass1,user2:pass2:email2:emailpass2"
+    twscrape_accounts: str = ""
+
+    # Nitter instances (comma-separated URLs)
+    nitter_instances: str = ""
+
+    # Official X API
+    twitter_bearer_token: str = ""
+
+    # H5 output — where to save the full briefing page
+    # Can be a local path or a URL prefix for deployed pages
+    twitter_h5_output_dir: str = "./output"
+    # Base URL for accessing the H5 page (e.g., GitHub Pages URL)
+    # Leave empty to use file:// path in email
+    twitter_h5_base_url: str = ""
+
+    def get_twitter_topics(self) -> list[str]:
+        """Parse comma-separated topics into list, max 10."""
+        if not self.twitter_topics.strip():
+            return []
+        topics = [t.strip() for t in self.twitter_topics.split(",") if t.strip()]
+        return topics[:10]
+
+    def get_twscrape_accounts(self) -> list[dict]:
+        """Parse twscrape accounts string into list of dicts."""
+        if not self.twscrape_accounts.strip():
+            return []
+        accounts = []
+        for entry in self.twscrape_accounts.split(","):
+            parts = entry.strip().split(":")
+            if len(parts) == 4:
+                accounts.append({
+                    "username": parts[0],
+                    "password": parts[1],
+                    "email": parts[2],
+                    "email_password": parts[3],
+                })
+        return accounts
+
+    def get_nitter_instances(self) -> list[str] | None:
+        """Parse comma-separated Nitter instances."""
+        if not self.nitter_instances.strip():
+            return None  # Use defaults
+        return [u.strip() for u in self.nitter_instances.split(",") if u.strip()]
+
     def get_llm_config(self) -> dict:
         """Return (api_key, base_url, model) for the selected provider."""
         provider_cfg = PROVIDER_CONFIGS[self.llm_provider]

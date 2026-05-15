@@ -30,6 +30,10 @@ class EmailSink:
     def send(self, briefing: DailyBriefing, html_content: str, text_content: str) -> None:
         """Send briefing email to self."""
         subject = f"\U0001f4ec \u6bcf\u65e5\u7b80\u62a5 \u00b7 {briefing.date}"
+        self.send_raw(subject=subject, html_content=html_content, text_content=text_content)
+
+    def send_raw(self, subject: str, html_content: str, text_content: str) -> None:
+        """Send an email with custom subject and content to self."""
 
         if self.debug:
             logger.debug(f"[SMTP] ─── Preparing email ───")

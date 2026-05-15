@@ -33,3 +33,11 @@ htmlcov/
 
 # Demo output
 demo_output.html
+
+
+# Nitter health cache (auto-generated)
+.nitter_health_cache.json
+
+
+# H5 output pages (auto-generated)
+output/
