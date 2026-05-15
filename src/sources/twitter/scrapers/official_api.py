@@ -51,20 +51,23 @@ class OfficialAPIScraper(BaseScraper):
                 "Content-Type": "application/json",
             }
 
-            # Build query — exclude retweets, require some engagement
-            query = f"{topic} -is:retweet has:media OR has:links"
+            # Build query — exclude retweets for quality content
+            # Note: Free tier has limited operators, keep it simple
+            query = f"{topic} -is:retweet"
             since_str = since.strftime("%Y-%m-%dT%H:%M:%SZ")
 
             params = {
                 "query": query,
                 "start_time": since_str,
-                "max_results": min(limit, 100),  # API max is 100
-                "sort_order": "relevancy",
+                "max_results": max(10, min(limit, 100)),  # API min=10, max=100
                 "tweet.fields": "created_at,public_metrics,author_id,lang,attachments",
                 "expansions": "author_id,attachments.media_keys",
                 "user.fields": "name,username",
                 "media.fields": "url,preview_image_url,type",
             }
+
+            # sort_order is only available for Academic/Pro tier, skip for free
+            # Free tier returns recent tweets in reverse chronological order
 
             if self.debug:
                 logger.debug(f"[official_api] Query: {query}")
