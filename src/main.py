@@ -140,6 +140,10 @@ def run_twitter_pipeline(settings: Settings) -> None:
         lookback_hours=settings.twitter_lookback_hours,
         top_per_topic=settings.twitter_top_per_topic,
         final_top=settings.twitter_final_top,
+        twikit_username=settings.twikit_username,
+        twikit_email=settings.twikit_email,
+        twikit_password=settings.twikit_password,
+        twikit_cookies_path=settings.twikit_cookies_path,
         twscrape_accounts=settings.get_twscrape_accounts(),
         nitter_instances=settings.get_nitter_instances(),
         bearer_token=settings.twitter_bearer_token,
@@ -547,7 +551,9 @@ def cli() -> None:
 
         # Check if at least one twitter scraper is configured
         has_scraper = (
-            settings.twscrape_accounts
+            settings.twikit_username
+            or settings.twikit_cookies_path
+            or settings.twscrape_accounts
             or settings.nitter_instances
             or settings.twitter_bearer_token
         )
@@ -555,10 +561,11 @@ def cli() -> None:
             logger.error(
                 "No Twitter scraper credentials configured. "
                 "You need at least one of:\n"
-                "  - TWITTER_BEARER_TOKEN (recommended, get free at https://developer.twitter.com)\n"
+                "  - TWIKIT_USERNAME + TWIKIT_PASSWORD + TWIKIT_EMAIL (recommended, free)\n"
+                "  - A cookies file at .twikit_cookies.json (from previous login)\n"
+                "  - TWITTER_BEARER_TOKEN (paid per-use since 2026)\n"
                 "  - TWSCRAPE_ACCOUNTS (needs Twitter account credentials)\n"
-                "  - NITTER_INSTANCES (mostly dead as of 2025, not recommended)\n"
-                "Please configure TWITTER_BEARER_TOKEN in your .env file."
+                "Please configure twikit credentials in your .env file."
             )
             sys.exit(1)
 
