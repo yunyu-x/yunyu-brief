@@ -552,10 +552,15 @@ def cli() -> None:
             or settings.twitter_bearer_token
         )
         if not has_scraper:
-            logger.warning(
+            logger.error(
                 "No Twitter scraper credentials configured. "
-                "Will try Nitter public instances as fallback."
+                "You need at least one of:\n"
+                "  - TWITTER_BEARER_TOKEN (recommended, get free at https://developer.twitter.com)\n"
+                "  - TWSCRAPE_ACCOUNTS (needs Twitter account credentials)\n"
+                "  - NITTER_INSTANCES (mostly dead as of 2025, not recommended)\n"
+                "Please configure TWITTER_BEARER_TOKEN in your .env file."
             )
+            sys.exit(1)
 
         run_twitter_pipeline(settings)
 

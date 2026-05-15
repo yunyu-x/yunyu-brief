@@ -31,10 +31,10 @@ DEFAULT_TOPICS = [
 class TwitterSource:
     """Fetch trending tech tweets from X/Twitter with multi-channel fallback.
 
-    Fetching priority:
-      1. twscrape (fastest, most data)
-      2. Nitter RSS (no auth needed, limited engagement data)
-      3. Official X API (rate limited, but reliable)
+    Fetching priority (updated 2025 — Nitter public instances are mostly dead):
+      1. Official X API (most reliable, free tier: 10k tweets/month)
+      2. twscrape (full data, needs accounts)
+      3. Nitter RSS (last resort, most instances are dead)
 
     For each topic, we fetch top N tweets by engagement, then return the
     combined and de-duplicated set sorted by engagement score.
@@ -70,10 +70,11 @@ class TwitterSource:
         self.debug = debug
 
         # Initialize scrapers in priority order
+        # Official API first (most reliable in 2025+), then twscrape, then Nitter as last resort
         self._scrapers: list[BaseScraper] = [
+            OfficialAPIScraper(bearer_token=bearer_token, debug=debug),
             TwscrapeScraper(accounts=twscrape_accounts or [], debug=debug),
             NitterScraper(instances=nitter_instances, debug=debug),
-            OfficialAPIScraper(bearer_token=bearer_token, debug=debug),
         ]
 
     def fetch(self) -> list[TweetItem]:
