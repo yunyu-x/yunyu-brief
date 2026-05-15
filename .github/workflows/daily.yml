@@ -81,6 +81,9 @@ jobs:
           TWITTER_ENABLED: ${{ secrets.TWITTER_ENABLED || 'true' }}
           TWITTER_TOPICS: ${{ secrets.TWITTER_TOPICS || '' }}
           TWITTER_LOOKBACK_HOURS: ${{ secrets.TWITTER_LOOKBACK_HOURS || '24' }}
+          TWIKIT_USERNAME: ${{ secrets.TWIKIT_USERNAME }}
+          TWIKIT_EMAIL: ${{ secrets.TWIKIT_EMAIL }}
+          TWIKIT_PASSWORD: ${{ secrets.TWIKIT_PASSWORD }}
           TWSCRAPE_ACCOUNTS: ${{ secrets.TWSCRAPE_ACCOUNTS || '' }}
           NITTER_INSTANCES: ${{ secrets.NITTER_INSTANCES || '' }}
           TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN || '' }}
