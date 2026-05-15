@@ -41,3 +41,7 @@ demo_output.html
 
 # H5 output pages (auto-generated)
 output/
+
+
+# Twikit cookies (contains auth tokens, DO NOT commit)
+.twikit_cookies.json

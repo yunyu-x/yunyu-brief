@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from src.sources.twitter.models import TweetItem
 from src.sources.twitter.scrapers.base import BaseScraper, ScraperError
+from src.sources.twitter.scrapers.twikit_scraper import TwikitScraper
 from src.sources.twitter.scrapers.twscrape_scraper import TwscrapeScraper
 from src.sources.twitter.scrapers.nitter_scraper import NitterScraper
 from src.sources.twitter.scrapers.official_api import OfficialAPIScraper
@@ -46,6 +47,10 @@ class TwitterSource:
         lookback_hours: int = 24,
         top_per_topic: int = 20,
         final_top: int = 10,
+        twikit_username: str = "",
+        twikit_email: str = "",
+        twikit_password: str = "",
+        twikit_cookies_path: str = "",
         twscrape_accounts: list[dict] | None = None,
         nitter_instances: list[str] | None = None,
         bearer_token: str = "",
@@ -58,6 +63,10 @@ class TwitterSource:
             lookback_hours: How far back to look for tweets.
             top_per_topic: How many top tweets to fetch per topic.
             final_top: How many tweets to include in final output (for Agent).
+            twikit_username: X username for twikit login.
+            twikit_email: Email for twikit login.
+            twikit_password: Password for twikit login.
+            twikit_cookies_path: Path to twikit cookies file.
             twscrape_accounts: Account dicts for twscrape.
             nitter_instances: Nitter instance URLs.
             bearer_token: X API Bearer Token.
@@ -69,9 +78,19 @@ class TwitterSource:
         self.final_top = final_top
         self.debug = debug
 
-        # Initialize scrapers in priority order
-        # Official API first (most reliable in 2025+), then twscrape, then Nitter as last resort
+        # Initialize scrapers in priority order:
+        # 1. twikit (free, cookie-based, best data)
+        # 2. Official API (paid per-use since 2026)
+        # 3. twscrape (needs account pool)
+        # 4. Nitter (last resort, mostly dead)
         self._scrapers: list[BaseScraper] = [
+            TwikitScraper(
+                username=twikit_username,
+                email=twikit_email,
+                password=twikit_password,
+                cookies_path=twikit_cookies_path,
+                debug=debug,
+            ),
             OfficialAPIScraper(bearer_token=bearer_token, debug=debug),
             TwscrapeScraper(accounts=twscrape_accounts or [], debug=debug),
             NitterScraper(instances=nitter_instances, debug=debug),

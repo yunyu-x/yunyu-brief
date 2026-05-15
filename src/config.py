@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     twitter_top_per_topic: int = 20
     twitter_final_top: int = 10
 
+    # twikit (recommended, free, cookie-based)
+    twikit_username: str = ""
+    twikit_email: str = ""
+    twikit_password: str = ""
+    twikit_cookies_path: str = ""  # Path to cookies file, default: .twikit_cookies.json
+
     # twscrape accounts: "user1:pass1:email1:emailpass1,user2:pass2:email2:emailpass2"
     twscrape_accounts: str = ""
 
